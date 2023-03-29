@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  analyzer-backend:
+    container_name: analyzer-backend
+    build: ./backend
+    command: uvicorn main:app --host 0.0.0.0 --port 5000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - 5000:5000
+    working_dir: /app
+    restart: on-failure
+    env_file:
+      - ./.env
+
+  redis:
+    container_name: redis
+    image: bitnami/redis:latest
+    env_file:
+      - ./.env
+    restart: on-failure
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3.11.11-management-alpine
+    env_file:
+      - ./.env
+    restart: on-failure
+
+  celery-beat:
+    container_name: celery-beat
+    build: ./backend
+    command: celery -A apps.celery.celery_app beat -l info
+    volumes:
+      - ./backend:/app
+    env_file:
+      - ./.env
+    restart: on-failure
+
+  celery-worker:
+    container_name: celery-worker
+    build: ./backend
+    command: celery -A apps.celery.celery_app worker -P threads -c 1 -l info
+    volumes:
+      - ./backend:/app
+    env_file:
+      - ./.env
+    restart: on-failure
+
+  analyzer-frontend:
+    build: ./frontend
+    container_name: analyzer-frontend
+    ports:
+      - '8080:3000'
+    volumes:
+      - ./frontend:/app
+    command: npm start
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    restart: on-failure

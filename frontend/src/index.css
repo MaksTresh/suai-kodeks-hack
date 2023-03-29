@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    font-family: var(--font-family);
+    background: var(--surface-ground);
+    color: var(--text-color);
+}
+
+.p-fileupload-row .p-badge {
+    display: none;
+}
+
+
+.p-progressbar {
+    position: absolute !important;
+    width: 100%;
+}
