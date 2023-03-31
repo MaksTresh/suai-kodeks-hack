@@ -1,21 +1,24 @@
-import React, {Dispatch, SetStateAction, useEffect, useState} from 'react';
+import React, {Dispatch, SetStateAction, useEffect, useRef, useState} from 'react';
 import {FileUpload, FileUploadHandlerEvent} from "primereact/fileupload";
 import {useMutation} from "react-query";
 import {createAnalyzerTask, getAnalyzerTaskStatus} from "../services/analyzer";
 import {ProgressBar} from "primereact/progressbar";
 import {useDebounce} from "primereact/hooks";
 import {Result} from "../types/task";
+import {Toast} from "primereact/toast";
 
 interface FormPageProps {
     setResult: Dispatch<SetStateAction<Result[]>>
 }
 
 const FormPage: React.FC<FormPageProps> = ({setResult}) => {
+    const toast = useRef<Toast>(null);
+
     const [isPending, setIsPending] = useState<boolean>(false)
     const [retryCount, debouncedRetryCount, setRetryCount] = useDebounce(0, 2000);
     const [progressBarValue, setProgressBarValue] = useState<number>(0)
 
-    const {isSuccess: isSuccessCreated, data: taskInfo, mutate: analyzeFile} = useMutation(
+    const {isSuccess: isSuccessCreated, data: taskInfo, mutate: analyzeFile, reset: resetCreationQuery} = useMutation(
         createAnalyzerTask
     );
 
@@ -54,6 +57,15 @@ const FormPage: React.FC<FormPageProps> = ({setResult}) => {
 
             if (taskStatus.status === 'SUCCESS') {
                 console.log(taskStatus.result)
+                if (taskStatus.result.length === 0) {
+                    toast.current?.show({ severity: 'warn', summary: 'Ошибка', detail: 'Таблиц не обнаружено' })
+                    resetCreationQuery()
+                    resetStatusQuery()
+                    setProgressBarValue(0)
+                    setIsPending(false)
+                    return
+                }
+
                 setProgressBarValue(100)
                 setResult(taskStatus.result)
                 setIsPending(false)
@@ -79,6 +91,7 @@ const FormPage: React.FC<FormPageProps> = ({setResult}) => {
 
     return (
         <>
+            <Toast ref={toast} />
             {isPending && <ProgressBar value={progressBarValue}></ProgressBar>}
 
                     <h1 className="text-3xl font-bold p-10">Анализ таблиц на изображении</h1>

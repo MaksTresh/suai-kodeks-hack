@@ -8,7 +8,7 @@ function App() {
 
     return (
     <div className="App">
-        <div className="grid h-screen place-items-center">
+        <div className="grid h-screen place-items-center w-100%">
             <div className={`min-[600px]:p-10 ${result.length === 0 ? "bg-white max rounded border" : ""}`}>
                 {result.length === 0 ? <FormPage setResult={setResult} /> : <GalleriaPage result={result} />}
             </div>

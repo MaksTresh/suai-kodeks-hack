@@ -41,7 +41,7 @@ services:
   celery-worker:
     container_name: celery-worker
     build: ./backend
-    command: celery -A apps.celery.celery_app worker -P threads -c 1 -l info
+    command: celery -A apps.celery.celery_app worker -l info
     volumes:
       - ./backend:/app
     env_file:
@@ -52,9 +52,10 @@ services:
     build: ./frontend
     container_name: analyzer-frontend
     ports:
-      - '8080:3000'
+      - '80:3000'
     volumes:
       - ./frontend:/app
+      - /app/node_modules
     command: npm start
     working_dir: /app
     stdin_open: true

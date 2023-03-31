@@ -1,35 +1,37 @@
-import importlib
-from abc import ABC
+import contextlib
+import os
+import sys
 
-from celery import Task
+from PIL import Image
+
 from apps.celery.celery_app import celery_app
+from apps.analyzer.schemas import TaskResult
+from yolov7.detect import predict
+from config import get_settings
 
 
-class PredictTask(Task, ABC):
-    abstract = True
-
-    def __init__(self):
-        super().__init__()
-        self.model = None
-
-    def __call__(self, *args, **kwargs):
-        if not self.model:
-            module_import = importlib.import_module(self.path[0])
-            model_obj = getattr(module_import, self.path[1])
-            self.model = model_obj()
-        return self.run(*args, **kwargs)
-
-
-@celery_app.task(
-    ignore_result=False,
-    bind=True,
-    base=PredictTask,
-    path=('apps.analyzer.analyzer_model', 'AnalyzerModel'),
-    name='{}.{}'.format(__name__, 'AnalyzerModel')
-)
-def analyze_image(self, file_path: str):
+@celery_app.task(ignore_result=False)
+def analyze_image(file_path: str) -> list[TaskResult]:
     """
     Essentially the run method of PredictTask
     """
-    prediction = self.model.predict(file_path)
-    return prediction
+    with contextlib.chdir("/app/yolov7"):
+        sys.path.append("/app/yolov7")
+        result = predict(file_path)
+
+    image_path = result["image_path"]
+    bboxes = result["result"]
+    print(image_path)
+
+    image = Image.open(file_path)
+    result: list[dict] = []
+
+    for i, box in enumerate(bboxes):
+        cropped_image_name = f"{i}-{os.path.basename(image_path)}"
+        x1, y1, x2, y2 = box['coords']
+        cropped_image = image.crop(box=(x1, y1, x2, y2))
+        cropped_image.save(os.path.join(get_settings().UPLOADED_IMAGES_DIR, cropped_image_name))
+
+        result.append(TaskResult(table_img=cropped_image_name, type=box['label']).dict())
+
+    return result

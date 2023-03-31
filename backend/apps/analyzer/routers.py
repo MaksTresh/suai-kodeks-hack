@@ -1,17 +1,19 @@
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from celery.result import AsyncResult
-from fastapi import APIRouter, UploadFile, Depends
+from fastapi import APIRouter, Depends, UploadFile
+from pydantic import parse_obj_as
 from starlette.requests import Request
 from starlette.responses import FileResponse
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED
 
-from apps.analyzer.dependencies import valid_image, valid_file_name
-from apps.analyzer.schemas import TaskSchema, TaskStatus
+from apps.analyzer.dependencies import valid_file_name, valid_image
+from apps.analyzer.schemas import TaskResult, TaskSchema, TaskStatus
 from apps.analyzer.tasks import analyze_image
 from apps.analyzer.utils import save_file
-from config import get_settings, Settings
+from config import Settings, get_settings
 
 router = APIRouter()
 
@@ -52,14 +54,14 @@ async def get_result_file(
 
 @router.get(
     "/tasks/{task_id}",
-    response_model=TaskSchema,
     status_code=HTTP_200_OK,
+    response_model=TaskSchema,
     response_description="Получение статуса задачи по анализу изображения",
 )
 async def get_result_status(
     request: Request,
     task_id: str,
-) -> TaskSchema:
+) -> Any:
     task = AsyncResult(task_id)
     if not task.ready():
         return TaskSchema(
@@ -67,8 +69,10 @@ async def get_result_status(
             status=TaskStatus.PENDING,
         )
 
+    print(task.result)
+
     return TaskSchema(
         task_id=task_id,
         status=TaskStatus.SUCCESS,
-        result=task.result,
+        result=parse_obj_as(list[TaskResult], task.result),
     )

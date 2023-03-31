@@ -1,4 +1,4 @@
-from apps.yolov7 import detect
+from yolov7 import detect
 
 
 class AnalyzerModel:

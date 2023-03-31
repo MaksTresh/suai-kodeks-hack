@@ -16,3 +16,5 @@ RUN pip install -r requirements.txt
 RUN pip install -r requirements.ml.txt
 
 COPY . .
+
+RUN pip install -r requirements.fix.txt
